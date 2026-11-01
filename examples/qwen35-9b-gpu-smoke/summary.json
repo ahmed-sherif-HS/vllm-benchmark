@@ -1,0 +1,152 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "label": "qwen35-9b-gpu",
+  "started_at": 1793512587.8089635,
+  "finished_at": 1793512595.2376986,
+  "config": {
+    "endpoint": {
+      "base_url": "http://gpu-host/v1",
+      "model": "Qwen/Qwen3.5-9B",
+      "api_key": "EMPTY",
+      "timeout_s": 600.0,
+      "extra_body": {
+        "ignore_eos": true
+      },
+      "image_path": null,
+      "image_detail": "auto"
+    },
+    "sweep": {
+      "concurrency": [
+        1,
+        4
+      ],
+      "input_tokens": [
+        128
+      ],
+      "output_tokens": [
+        32
+      ],
+      "requests_per_cell": null,
+      "duration_s": null,
+      "requests_per_user": 2,
+      "warmup_requests": 1,
+      "temperature": 0.0,
+      "seed": 1234
+    },
+    "output": {
+      "dir": "results",
+      "run_name": "qwen35-9b-gpu-smoke",
+      "plots": false
+    },
+    "label": "qwen35-9b-gpu"
+  },
+  "calibration": {
+    "tokens_per_word": 1.0057142857142858,
+    "overhead_tokens": 34,
+    "verify_target": 512,
+    "verify_measured": 505
+  },
+  "host": {
+    "hostname": "client",
+    "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.43",
+    "cpu_count": 8
+  },
+  "summaries": [
+    {
+      "concurrency": 1,
+      "target_input_tokens": 128,
+      "target_output_tokens": 32,
+      "requests": 2,
+      "ok": 2,
+      "failed": 0,
+      "wall_s": 2.0651823189109564,
+      "actual_input_tokens_mean": 125.0,
+      "actual_output_tokens_mean": 32.0,
+      "ttft": {
+        "mean": 0.6708386584650725,
+        "p50": 0.6708386584650725,
+        "p90": 0.6865650636609644,
+        "p99": 0.69010350483004,
+        "min": 0.6511806519702077,
+        "max": 0.6904966649599373
+      },
+      "tpot": {
+        "mean": 0.011631910674153798,
+        "p50": 0.011631910674153798,
+        "p90": 0.011636023935411246,
+        "p99": 0.011636949419194171,
+        "min": 0.011626769097581986,
+        "max": 0.011637052250725607
+      },
+      "itl": {
+        "mean": 0.011631910674153798,
+        "p50": 0.007180776447057724,
+        "p90": 0.012085173185914755,
+        "p99": 0.13385891581419856,
+        "min": 2.8699636459350586e-05,
+        "max": 0.14348000707104802
+      },
+      "e2e": {
+        "mean": 1.0324243803042918,
+        "p50": 1.0324243803042918,
+        "p90": 1.048275816673413,
+        "p99": 1.051842389856465,
+        "min": 1.0126100848428905,
+        "max": 1.0522386757656932
+      },
+      "req_per_s": 0.9684374990459296,
+      "output_tok_per_s": 30.989999969469746,
+      "total_tok_per_s": 152.04468735021095,
+      "per_user_output_tok_per_s": 31.006426827372856,
+      "errors": []
+    },
+    {
+      "concurrency": 4,
+      "target_input_tokens": 128,
+      "target_output_tokens": 32,
+      "requests": 8,
+      "ok": 8,
+      "failed": 0,
+      "wall_s": 2.1608797679655254,
+      "actual_input_tokens_mean": 126.75,
+      "actual_output_tokens_mean": 32.0,
+      "ttft": {
+        "mean": 0.7089209010009654,
+        "p50": 0.7093230208847672,
+        "p90": 0.7249446843750775,
+        "p99": 0.7257182475365699,
+        "min": 0.6906457520090044,
+        "max": 0.7258041989989579
+      },
+      "tpot": {
+        "mean": 0.01182579158076776,
+        "p50": 0.011868513256852184,
+        "p90": 0.011938118021334371,
+        "p99": 0.011982360715647377,
+        "min": 0.011602029655008547,
+        "max": 0.011987276570571045
+      },
+      "itl": {
+        "mean": 0.01182579158076776,
+        "p50": 0.007987553952261806,
+        "p90": 0.012669088458642366,
+        "p99": 0.1127571468660608,
+        "min": 2.70097516477108e-05,
+        "max": 0.13004985637962818
+      },
+      "e2e": {
+        "mean": 1.076416915806476,
+        "p50": 1.0700307111255825,
+        "p90": 1.0958909877110272,
+        "p99": 1.0982914356561377,
+        "min": 1.0591099527664483,
+        "max": 1.0985581520944834
+      },
+      "req_per_s": 3.7021957994136914,
+      "output_tok_per_s": 118.47026558123812,
+      "total_tok_per_s": 587.7235831569235,
+      "per_user_output_tok_per_s": 29.73355443829088,
+      "errors": []
+    }
+  ]
+}

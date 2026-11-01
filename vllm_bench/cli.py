@@ -146,6 +146,26 @@ def cmd_mock(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ui(a: argparse.Namespace) -> int:
+    from .dashboard import serve
+
+    roots = [Path(path) for path in (a.results, a.examples) if path and Path(path).is_dir()]
+    if not roots:
+        console.print("[red]error:[/] no results or examples directory")
+        return 2
+    try:
+        console.print(f"[bold]vllm-bench[/] dashboard  http://{a.host}:{a.port}/")
+        console.print("[dim]localhost only · api keys stay in the summary file[/]")
+        serve(roots, a.host, a.port)
+    except ValueError as e:
+        console.print(f"[red]error:[/] {e}")
+        return 2
+    except OSError as e:
+        console.print(f"[red]error:[/] {e}")
+        return 1
+    return 0
+
+
 def cmd_compare(a: argparse.Namespace) -> int:
     from .compare import compare_devices, compare_runs
     paths = [Path(p) for p in a.runs]
@@ -179,6 +199,13 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--all", action="store_true",
                    help="every metric for one gpu run and one cpu run, with the ratio direction in the header")
     c.set_defaults(func=cmd_compare)
+
+    u = sub.add_parser("ui", help="open a localhost dashboard of results/ and examples/")
+    u.add_argument("--results", default="results", help="directory of run folders (default results/)")
+    u.add_argument("--examples", default="examples", help="sanitized runs shipped with the repo")
+    u.add_argument("--host", default="127.0.0.1")
+    u.add_argument("--port", type=int, default=8765)
+    u.set_defaults(func=cmd_ui)
 
     a = ap.parse_args(argv)
     return a.func(a)

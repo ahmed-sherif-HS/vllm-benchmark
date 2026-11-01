@@ -53,6 +53,15 @@ vllm-bench run --base-url http://localhost:8000/v1 --model Qwen/Qwen2.5-1.5B-Ins
   --requests-per-user 4 --warmup 2 --label gpu
 ```
 
+Open the dashboard (localhost only; API keys stay in the summary file):
+
+```bash
+vllm-bench ui
+# http://127.0.0.1:8765/
+```
+
+`results/` is listed first and shadows an example with the same folder name. `examples/` holds a sanitized copy of a published GPU grid so the page has something to show before a local sweep.
+
 Try the tool without a model:
 
 ```bash
@@ -166,6 +175,9 @@ vllm_bench/
   metrics.py      percentiles, per-cell summaries
   report.py       JSONL/CSV/JSON/Markdown/PNG writers
   compare.py      multi-run comparison table
+  dashboard.py    localhost UI; strips API keys before the page sees a run
   mock_server.py  stdlib fake OpenAI server
+  static/         dashboard HTML, CSS, and JS
 configs/          campaign.yaml cpu.yaml gpu.yaml vlm.yaml smoke.yaml
+examples/         sanitized summary.json files for the dashboard
 ```
