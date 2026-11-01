@@ -1,0 +1,20 @@
+# Benchmark a vLLM CPU deployment. CPU prefill is slow, so keep inputs modest
+# and concurrency low; raise them once you see headroom.
+label: cpu
+endpoint:
+  base_url: http://localhost:8000/v1
+  model: null            # null -> first model listed by /v1/models
+  api_key: EMPTY
+  timeout_s: 900
+  extra_body:
+    ignore_eos: true     # vLLM: exact output length
+sweep:
+  concurrency: [1, 2, 4, 8]
+  input_tokens: [128, 512, 1024]
+  output_tokens: [32, 128]
+  requests_per_user: 3
+  warmup_requests: 1
+  temperature: 0.0
+output:
+  dir: results
+  plots: true

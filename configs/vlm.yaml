@@ -1,0 +1,20 @@
+# Vision-language model: every request carries the same image plus a text
+# prompt of the target length. Put a representative image at assets/sample.jpg.
+label: vlm-gpu
+endpoint:
+  base_url: http://localhost:8000/v1
+  model: null
+  api_key: EMPTY
+  image_path: assets/sample.jpg
+  image_detail: auto
+  extra_body:
+    ignore_eos: true
+sweep:
+  concurrency: [1, 2, 4, 8]
+  input_tokens: [64, 256]      # text tokens target; image tokens are added by the server
+  output_tokens: [64, 256]
+  requests_per_user: 3
+  warmup_requests: 1
+output:
+  dir: results
+  plots: true

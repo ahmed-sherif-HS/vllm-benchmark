@@ -1,0 +1,12 @@
+# Quick smoke test (~1 minute on GPU) to verify the endpoint and the tool.
+label: smoke
+endpoint:
+  base_url: http://localhost:8000/v1
+sweep:
+  concurrency: [1, 4]
+  input_tokens: [128]
+  output_tokens: [32]
+  requests_per_user: 2
+  warmup_requests: 1
+output:
+  plots: false
