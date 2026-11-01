@@ -10,7 +10,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from .config import BenchConfig, load_config, parse_int_list, parse_json_arg
+from .config import BenchConfig, config_from_campaign, load_campaign, load_config, parse_int_list, parse_json_arg
 
 console = Console()
 
@@ -18,6 +18,8 @@ console = Console()
 def _add_run_parser(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("run", help="run a benchmark sweep against an OpenAI-compatible endpoint")
     p.add_argument("-c", "--config", help="YAML config file (CLI flags override it)")
+    p.add_argument("--campaign", help="campaign YAML: one shared grid, models, gpu and cpu endpoints")
+    p.add_argument("--device", choices=["gpu", "cpu"], help="campaign device to benchmark")
     p.add_argument("--base-url", help="e.g. http://localhost:8000/v1")
     p.add_argument("--model", help="model id; defaults to first entry of /v1/models")
     p.add_argument("--api-key", help="bearer token (default EMPTY)")
@@ -62,11 +64,53 @@ def _apply_overrides(cfg: BenchConfig, a: argparse.Namespace) -> BenchConfig:
     return cfg
 
 
+def _config_from_args(a: argparse.Namespace) -> BenchConfig:
+    if a.campaign and a.config:
+        raise ValueError("pass --campaign or --config, not both")
+    if a.campaign:
+        drifted = [name for name in ("concurrency", "input_tokens", "output_tokens") if getattr(a, name)]
+        if drifted:
+            raise ValueError(
+                "the campaign file owns the grid; edit it instead of passing --" + ", --".join(drifted)
+            )
+        if not a.device:
+            raise ValueError("pass --device gpu or --device cpu with --campaign")
+        camp = load_campaign(a.campaign)
+        model = a.model
+        if not model:
+            if len(camp.models) != 1:
+                raise ValueError("pass --model. Campaign lists: " + ", ".join(camp.models))
+            model = camp.models[0]
+        cfg = config_from_campaign(camp, a.device, model)
+        if a.base_url:
+            cfg.endpoint.base_url = a.base_url
+        if a.api_key:
+            cfg.endpoint.api_key = a.api_key
+        if not cfg.endpoint.base_url:
+            where = "the vast.ai instance" if a.device == "gpu" else "the CPU host"
+            raise ValueError(f"set {a.device}.base_url in {a.campaign} to {where} after vLLM is up")
+        # Result location and label only. The sweep stays in the campaign file.
+        if a.label:
+            cfg.label = a.label
+        if a.out_dir:
+            cfg.output.dir = a.out_dir
+        if a.run_name:
+            cfg.output.run_name = a.run_name
+        if a.no_plots:
+            cfg.output.plots = False
+        return cfg
+    return _apply_overrides(load_config(a.config), a)
+
+
 def cmd_run(a: argparse.Namespace) -> int:
     from .report import write_report
     from .runner import run_sweep
 
-    cfg = _apply_overrides(load_config(a.config), a)
+    try:
+        cfg = _config_from_args(a)
+    except (ValueError, OSError) as e:
+        console.print(f"[red]error:[/] {e}")
+        return 2
     n_cells = len(cfg.cells())
     console.print(f"[bold]vllm-bench[/] -> {cfg.endpoint.base_url}  cells={n_cells}  "
                   f"C={cfg.sweep.concurrency} in={cfg.sweep.input_tokens} out={cfg.sweep.output_tokens}")
@@ -103,8 +147,16 @@ def cmd_mock(a: argparse.Namespace) -> int:
 
 
 def cmd_compare(a: argparse.Namespace) -> int:
-    from .compare import compare_runs
-    print(compare_runs([Path(p) for p in a.runs], metric=a.metric))
+    from .compare import compare_devices, compare_runs
+    paths = [Path(p) for p in a.runs]
+    if a.all:
+        try:
+            print(compare_devices(paths), end="")
+        except ValueError as e:
+            console.print(f"[red]error:[/] {e}")
+            return 2
+        return 0
+    print(compare_runs(paths, metric=a.metric))
     return 0
 
 
@@ -124,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("runs", nargs="+", help="run directories containing summary.json")
     c.add_argument("--metric", default="ttft_p50_ms",
                    help="column from summary.csv, e.g. ttft_p50_ms, tpot_p50_ms, e2e_p99_ms, output_tok_per_s")
+    c.add_argument("--all", action="store_true",
+                   help="every metric for one gpu run and one cpu run, with the ratio direction in the header")
     c.set_defaults(func=cmd_compare)
 
     a = ap.parse_args(argv)

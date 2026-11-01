@@ -47,7 +47,9 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path.rstrip("/").endswith("/models"):
-            self._json(200, {"object": "list", "data": [{"id": self.model_id, "object": "model"}]})
+            self._json(200, {"object": "list", "data": [{
+                "id": self.model_id, "object": "model", "max_model_len": 4096,
+            }]})
         else:
             self._json(404, {"error": "not found"})
 

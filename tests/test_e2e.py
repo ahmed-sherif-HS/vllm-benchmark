@@ -41,6 +41,9 @@ async def test_sweep_and_report(mock_url, tmp_path: Path):
     assert (tmp_path / "r" / "summary.csv").exists()
     meta = json.loads(paths["summary_json"].read_text())
     assert len(meta["summaries"]) == 4
+    assert meta["server"]["device"] is None
+    assert meta["server"]["max_model_len"] == 4096
+    assert meta["server"]["model"] == "mock-model"
     assert sum(1 for _ in paths["requests"].open()) == sum(s.summary.requests for s in run["cells"])
 
 

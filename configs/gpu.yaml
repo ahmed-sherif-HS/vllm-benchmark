@@ -1,4 +1,6 @@
-# Benchmark a vLLM GPU deployment.
+# GPU sweep. The three lists match configs/campaign.yaml. Edit them there,
+# then keep this file in step. Pass the vast.ai URL with --base-url and the
+# bearer token with --api-key; do not store either here.
 label: gpu
 endpoint:
   base_url: http://localhost:8000/v1
@@ -8,9 +10,9 @@ endpoint:
   extra_body:
     ignore_eos: true
 sweep:
-  concurrency: [1, 2, 4, 8, 16, 32, 64]
-  input_tokens: [128, 512, 1024, 2048]
-  output_tokens: [64, 256, 512]
+  concurrency: [1, 2, 4, 8, 16]
+  input_tokens: [128, 512, 1024, 2048, 4096]
+  output_tokens: [64, 256]
   requests_per_user: 4
   warmup_requests: 2
   temperature: 0.0

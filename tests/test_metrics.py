@@ -25,5 +25,9 @@ def test_summarize_basic():
     assert s.output_tok_per_s == 9.0  # 18 tokens / 2 s
     assert s.req_per_s == 1.0
     assert s.errors == ["boom"]
+    assert s.fail_other == 1 and s.fail_timeout == 0
+    assert s.prefill_tok_per_s["p50"] == 375.0
     flat = s.flat()
     assert flat["ttft_p50_ms"] == 300.0
+    assert flat["prefill_tok_per_s_p50"] == 375.0
+    assert "goodput" in flat and "fail_timeout" in flat

@@ -1,5 +1,7 @@
-# Benchmark a vLLM CPU deployment. CPU prefill is slow, so keep inputs modest
-# and concurrency low; raise them once you see headroom.
+# CPU sweep. Same concurrency, input_tokens, and output_tokens as
+# configs/campaign.yaml and configs/gpu.yaml. A cell may time out on CPU.
+# A timeout is recorded as a failed request, not a reason to shrink this
+# grid in advance.
 label: cpu
 endpoint:
   base_url: http://localhost:8000/v1
@@ -9,11 +11,11 @@ endpoint:
   extra_body:
     ignore_eos: true     # vLLM: exact output length
 sweep:
-  concurrency: [1, 2, 4, 8]
-  input_tokens: [128, 512, 1024]
-  output_tokens: [32, 128]
-  requests_per_user: 3
-  warmup_requests: 1
+  concurrency: [1, 2, 4, 8, 16]
+  input_tokens: [128, 512, 1024, 2048, 4096]
+  output_tokens: [64, 256]
+  requests_per_user: 4
+  warmup_requests: 2
   temperature: 0.0
 output:
   dir: results

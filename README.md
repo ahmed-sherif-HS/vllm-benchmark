@@ -34,7 +34,18 @@ vllm-bench compare results/rtx3060-* results/cpu-12c-* --metric ttft_p50_ms
 vllm-bench compare results/rtx3060-* results/cpu-12c-* --metric output_tok_per_s
 ```
 
-Everything in the YAML can be overridden from the CLI:
+One campaign file is the grid for every model and both devices. GPU means a vast.ai machine: rent the GPU, start vLLM with the model id from the file, then set `gpu.base_url` and `gpu.gpu_type` in `configs/campaign.yaml`. The CPU URL goes in the same file. Do not pass `--concurrency`, `--input-tokens`, or `--output-tokens` for a campaign run; those three lists live only there.
+
+```bash
+vllm-bench run --campaign configs/campaign.yaml --device gpu \
+  --model Qwen/Qwen2.5-1.5B-Instruct
+vllm-bench run --campaign configs/campaign.yaml --device cpu \
+  --model Qwen/Qwen2.5-1.5B-Instruct
+```
+
+The label is `<model>-gpu` or `<model>-cpu`, so the two runs pair up later.
+
+Everything in a single-run YAML can be overridden from the CLI:
 
 ```bash
 vllm-bench run --base-url http://localhost:8000/v1 --model Qwen/Qwen2.5-1.5B-Instruct \
@@ -83,8 +94,7 @@ vllm-bench run --base-url http://127.0.0.1:8321/v1 --concurrency 1,4,16 \
 6. **Outputs** in `results/<label>-<timestamp>/`:
    `requests.jsonl` (every request, incl. the raw ITL list), `summary.csv`,
    `summary.json` (config, calibration, host/GPU info, all stats),
-   `REPORT.md`, and `*.png` charts of each metric vs concurrency, one line per
-   (input, output) shape.
+   `REPORT.md` (device, dtype, max context, launch flags, goodput, and failure counts), and `*.png` charts of each metric vs concurrency and, when the run has more than one context length, vs context length.
 
 ## Vision-language models
 
@@ -131,9 +141,8 @@ at its `/v1` and add `--no-ignore-eos` if it rejects vLLM-specific fields.
 ## Tips for fair CPU vs GPU comparisons
 
 - Same model, same dtype where possible, same `max-model-len`.
-- Keep the sweep grid identical across runs so `compare` lines up cells.
-- CPU prefill is roughly linear in input tokens; start with `configs/cpu.yaml`
-  (small inputs, low concurrency) and widen once you see headroom.
+- `configs/gpu.yaml` and `configs/cpu.yaml` list the same users, context lengths, and output lengths as `configs/campaign.yaml`. Edit that grid in the campaign file.
+- A CPU cell may time out. That failure is recorded. It is not a reason to shrink the grid first.
 - Watch the `ok/requests` column: timeouts or OOM show up as failures, and the
   first error message is kept in `summary.json`.
 - Run the client on a different machine than a CPU server, or pin the server's
@@ -158,5 +167,5 @@ vllm_bench/
   report.py       JSONL/CSV/JSON/Markdown/PNG writers
   compare.py      multi-run comparison table
   mock_server.py  stdlib fake OpenAI server
-configs/          cpu.yaml gpu.yaml vlm.yaml smoke.yaml
+configs/          campaign.yaml cpu.yaml gpu.yaml vlm.yaml smoke.yaml
 ```

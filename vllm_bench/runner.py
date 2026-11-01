@@ -91,7 +91,7 @@ async def run_cell(
 
     await asyncio.gather(*(user() for _ in range(concurrency)))
     wall = time.perf_counter() - t0
-    summary = summarize(results, concurrency, in_tok, out_tok, wall)
+    summary = summarize(results, concurrency, in_tok, out_tok, wall, bars=cfg.bars)
     log(_fmt_cell(summary))
     return CellRun(summary=summary, results=results)
 
@@ -122,6 +122,13 @@ async def run_sweep(
         log(f"using model: {model}")
 
     client = OpenAIClient(cfg.endpoint, model)
+    try:
+        card = await client.model_card()
+    except Exception as e:  # noqa: BLE001
+        log(f"model card unavailable: {e}")
+        card = {}
+    from .report import describe_server
+    server = describe_server(cfg, model, card)
     pb = PromptBuilder(cfg.sweep.seed)
     started = time.time()
     cells: list[CellRun] = []
@@ -143,5 +150,6 @@ async def run_sweep(
         "finished_at": time.time(),
         "config": cfg.to_dict(),
         "calibration": calib,
+        "server": server,
         "cells": cells,
     }

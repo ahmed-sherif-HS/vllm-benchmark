@@ -23,6 +23,16 @@ import httpx
 from .config import EndpointConfig
 
 
+def _delta_text(delta: dict[str, Any]) -> str:
+    """Text from one streaming delta, including reasoning-parser fields."""
+    parts: list[str] = []
+    for key in ("content", "reasoning", "reasoning_content"):
+        val = delta.get(key)
+        if isinstance(val, str) and val:
+            parts.append(val)
+    return "".join(parts)
+
+
 @dataclass
 class RequestResult:
     ok: bool
@@ -36,6 +46,7 @@ class RequestResult:
     usage_from_server: bool = False
     error: str | None = None
     status_code: int | None = None
+    failure_class: str | None = None
 
     @property
     def tpot_s(self) -> float | None:
@@ -64,6 +75,7 @@ class RequestResult:
             "usage_from_server": self.usage_from_server,
             "error": self.error,
             "status_code": self.status_code,
+            "failure_class": self.failure_class,
         }
 
 
@@ -105,6 +117,16 @@ class OpenAIClient:
             r = await http.get("/models")
             r.raise_for_status()
             return [m["id"] for m in r.json().get("data", [])]
+
+    async def model_card(self) -> dict[str, Any]:
+        """The /v1/models entry for this model. Empty if the server omits it."""
+        r = await self._http.get("/models")
+        r.raise_for_status()
+        data = r.json().get("data") or []
+        for item in data:
+            if item.get("id") == self.model:
+                return item
+        return {}
 
     def _messages(self, prompt: str) -> list[dict[str, Any]]:
         if self._image_part is None:
@@ -153,9 +175,9 @@ class OpenAIClient:
             async with self._http.stream("POST", "/chat/completions", json=body) as resp:
                 if resp.status_code != 200:
                     text = (await resp.aread()).decode(errors="replace")[:500]
-                    return RequestResult(
-                        ok=False, start_ts=start_ts, e2e_s=time.perf_counter() - start,
-                        ttft_s=None, error=text, status_code=resp.status_code,
+                    return _failed(
+                        start_ts=start_ts, e2e_s=time.perf_counter() - start,
+                        error=text, status_code=resp.status_code,
                     )
                 async for line in resp.aiter_lines():
                     if not line.startswith("data:"):
@@ -176,9 +198,9 @@ class OpenAIClient:
                     if not choices:
                         continue
                     delta = choices[0].get("delta") or {}
-                    content = delta.get("content")
-                    if content is None and "reasoning_content" in delta:
-                        content = delta.get("reasoning_content")
+                    # Qwen reasoning parsers stream thinking in `reasoning` (or
+                    # `reasoning_content`) and often send content as "".
+                    content = _delta_text(delta)
                     if not content:
                         continue
                     now = time.perf_counter()
@@ -189,16 +211,30 @@ class OpenAIClient:
                         itl.append(now - last)
                     last = now
         except (httpx.HTTPError, OSError) as e:
-            return RequestResult(
-                ok=False, start_ts=start_ts, e2e_s=time.perf_counter() - start,
-                ttft_s=ttft, itl_s=itl, chunks=chunks, error=f"{type(e).__name__}: {e}",
+            return _failed(
+                start_ts=start_ts, e2e_s=time.perf_counter() - start,
+                ttft_s=ttft, itl_s=itl, chunks=chunks,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                error=f"{type(e).__name__}: {e}",
             )
         e2e = time.perf_counter() - start
         if completion_tokens is None:
             completion_tokens = chunks
+        ok = chunks > 0
+        if not ok:
+            return _failed(
+                start_ts=start_ts, e2e_s=e2e, ttft_s=ttft, itl_s=itl,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                chunks=chunks, usage_from_server=usage_seen, status_code=200,
+                error="no content chunks received",
+            )
         return RequestResult(
-            ok=chunks > 0, start_ts=start_ts, e2e_s=e2e, ttft_s=ttft, itl_s=itl,
+            ok=True, start_ts=start_ts, e2e_s=e2e, ttft_s=ttft, itl_s=itl,
             prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
             chunks=chunks, usage_from_server=usage_seen, status_code=200,
-            error=None if chunks > 0 else "no content chunks received",
         )
+
+
+def _failed(**kwargs: Any) -> RequestResult:
+    from .metrics import failure_class
+    return RequestResult(ok=False, failure_class=failure_class(kwargs.get("error")), **kwargs)

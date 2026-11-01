@@ -1,0 +1,56 @@
+# One grid for every model and both devices.
+# Edit concurrency, input_tokens, and output_tokens here, then keep
+# configs/gpu.yaml and configs/cpu.yaml on the same three lists.
+# Starting grid from BM-1.1; shorten the longest context after the GPU type
+# and the models that fit are confirmed.
+
+sweep:
+  concurrency: [1, 2, 4, 8, 16]
+  input_tokens: [128, 512, 1024, 2048, 4096]
+  output_tokens: [64, 256]
+  requests_per_user: 4
+  warmup_requests: 2
+  temperature: 0.0
+
+# GPU: rent a machine on vast.ai, start vLLM with the model id below,
+# then paste the public URL (the /v1 base) and the GPU offer you rented.
+gpu:
+  provider: vast.ai
+  gpu_type: ""
+  base_url: ""
+  api_key: EMPTY
+  timeout_s: 600
+  # Current vast.ai process. --dtype was not passed; vLLM defaults to auto.
+  # Model id is the campaign --model, not part of these flags.
+  dtype: auto
+  max_model_len: 32000
+  launch_args: >-
+    --max-num-seqs 8 --max-model-len 32000
+    --enable-auto-tool-choice --tool-call-parser qwen3_coder
+    --reasoning-parser qwen3 --download-dir /workspace/models
+    --host 127.0.0.1 --port 18000
+
+# CPU host is separate. The benchmark client must not run on these cores.
+# dtype, max_model_len, and launch_args stay empty until that server exists.
+cpu:
+  provider: ""
+  gpu_type: ""
+  base_url: ""
+  api_key: EMPTY
+  timeout_s: 900
+
+output:
+  dir: results
+  plots: true
+
+# Provisional until the first full model confirms them.
+# Goodput is the share of requests that succeed with both latencies at or under these.
+bars:
+  ttft_ms: 2000
+  tpot_ms: 50
+
+# The vast.ai GPU is serving this id. /v1/models reported max_model_len 32000.
+# It has not been loaded on a CPU host. Qwen2.5-1.5B and Qwen3.6-35B-A3B are
+# not on this instance, so they are not in the comparable list.
+models:
+  - id: Qwen/Qwen3.5-9B
